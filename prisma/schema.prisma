@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  name         String
+  dateOfBirth  DateTime
+  passwordHash String
+  savedMovies  SavedMovie[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Genre {
+  id     Int           @id @default(autoincrement())
+  name   String        @unique
+  movies MovieGenre[]
+}
+
+model Movie {
+  id            Int                @id @default(autoincrement())
+  title         String
+  year          Int
+  synopsis      String?
+  runtime       Int?
+  director      String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  genres        MovieGenre[]
+  cast          MovieActor[]
+  availability  MovieAvailability[]
+  savedBy       SavedMovie[]
+}
+
+model Actor {
+  id    Int          @id @default(autoincrement())
+  name  String       @unique
+  roles MovieActor[]
+}
+
+model MovieActor {
+  movieId Int
+  actorId Int
+  role    String?
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, actorId])
+}
+
+model Country {
+  code String @id
+  name String
+
+  availability MovieAvailability[]
+}
+
+model MovieAvailability {
+  movieId     Int
+  countryCode String
+
+  movie   Movie   @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@id([movieId, countryCode])
+  @@index([countryCode, movieId], map: "movie_availability_country_movie_idx")
+}
+
+model SavedMovie {
+  userId    Int
+  movieId   Int
+  dateAdded DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@id([userId, movieId])
+  @@index([userId, dateAdded], map: "saved_movies_user_date_added_idx")
+}
+
+model MovieGenre {
+  movieId Int
+  genreId Int
+
+  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([movieId, genreId])
+}

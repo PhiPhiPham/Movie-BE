@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Movie Discovery Service
+  version: 1.0.0
+  description: Public API for the movie discovery take-home project.
+servers:
+  - url: http://localhost:3000
+paths:
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Obtain an access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '201':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/AuthError'
+  /genres:
+    get:
+      tags:
+        - genres
+      summary: List genres
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated genres
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedGenresResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /movies:
+    get:
+      tags:
+        - movies
+      summary: List available movies in a country
+      parameters:
+        - in: query
+          name: country
+          required: true
+          schema:
+            type: string
+            example: US
+        - in: query
+          name: genre
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [year, -year]
+            default: -year
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated movies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedMoviesResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /users/{userId}/saved-movies:
+    get:
+      tags:
+        - saved-movies
+      summary: List movies saved by a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - in: query
+          name: country
+          required: true
+          schema:
+            type: string
+            example: US
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [date_added, -date_added]
+            default: -date_added
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated saved movies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedSavedMoviesResponse'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      tags:
+        - saved-movies
+      summary: Save a movie
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMovieRequest'
+      responses:
+        '201':
+          description: Movie saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedMovie'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/DuplicateSave'
+        '422':
+          $ref: '#/components/responses/UnavailableError'
+  /users/{userId}/saved-movies/{movieId}:
+    delete:
+      tags:
+        - saved-movies
+      summary: Remove a saved movie
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotSavedError'
+components:
+  parameters:
+    Page:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      in: query
+      name: pageSize
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UserId:
+      in: path
+      name: userId
+      required: true
+      schema:
+        type: integer
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            email:
+              type: string
+            name:
+              type: string
+    Genre:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    MovieSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        year:
+          type: integer
+    SavedMovie:
+      allOf:
+        - $ref: '#/components/schemas/MovieSummary'
+        - type: object
+          properties:
+            genres:
+              type: array
+              items:
+                type: string
+    PaginatedEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items: {}
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    PagedGenresResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Genre'
+    PagedMoviesResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/MovieSummary'
+    PagedSavedMoviesResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaginatedEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/MovieSummary'
+                  - type: object
+                    properties:
+                      date_added:
+                        type: string
+                        format: date-time
+    SaveMovieRequest:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        country:
+          type: string
+      required: [movieId, country]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+  responses:
+    ValidationError:
+      description: Invalid payload
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthError:
+      description: Authentication failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    DuplicateSave:
+      description: Duplicate save attempt
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnavailableError:
+      description: Movie unavailable in country
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotSavedError:
+      description: Movie not saved
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
