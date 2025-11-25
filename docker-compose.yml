@@ -4,9 +4,9 @@ services:
     ports:
       - "4000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/movies?schema=public
-      JWT_SECRET: supersecret
-      JWT_EXPIRES_IN: 1h
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
       NODE_ENV: production
     depends_on:
       - db
