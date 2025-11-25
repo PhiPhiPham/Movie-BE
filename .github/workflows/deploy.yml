@@ -1,0 +1,13 @@
+name: Trigger VPS Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call deployment webhook
+        run: |
+          curl -sSf http://62.72.29.121:3000/api/deploy/6bee95f91d7644c5228dd0f9e3361bcf97a509abc1fd695c
